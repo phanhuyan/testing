@@ -251,6 +251,7 @@ class Server:
             else:
                 self.detectFailMember()
             self.removeFailMember()
+            self.printMembershipList()
             self.checkFalsePositive()
 
     def run(self):
@@ -276,9 +277,9 @@ class Server:
         sender_thread.start()
 
         # Start a to update enable sending
-        user_thread = threading.Thread(target=self.user_input)
-        user_thread.daemon = True
-        user_thread.start()
+        # user_thread = threading.Thread(target=self.user_input)
+        # user_thread.daemon = True
+        # user_thread.start()
 
         # You can add any additional logic or tasks here that the server should perform.
 
@@ -286,7 +287,7 @@ class Server:
         # heartbeat_thread.join()
         receiver_thread.join()
         sender_thread.join()
-        user_thread.join()
+        # user_thread.join()
 
 
 if __name__ == "__main__":
