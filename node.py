@@ -66,6 +66,9 @@ class Server:
             if member not in self.MembershipList:
                 self.falsePositive += 1
         self.machineCheck += 10
+        print("False Positive: ", self.falsePositive, "Machine check:", self.machineCheck)
+
+
     
     def printID(self):
         with self.rlock:
