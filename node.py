@@ -35,11 +35,11 @@ class Server:
         self.port = DEFAULT_PORT_NUM
         self.heartbeat = 0
         self.timejoin = int(time.time())
-        self.id = f"{self.ip}:{self.port}:{self.timejoin}"
+        self.id = f"{self.ip}:{self.port}"
         self.addr = (self.ip, self.port)
         self.MembershipList = {
-            f"{ip}:{port}:{self.timejoin}": {
-                "id": f"{ip}:{port}:{self.timejoin}",
+            f"{ip}:{port}": {
+                "id": f"{ip}:{port}",
                 "addr": (ip, port),
                 "heartbeat": 0,
                 "status": "Alive",
