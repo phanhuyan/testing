@@ -58,6 +58,8 @@ class Server:
         self.rlock = threading.RLock()
         self.enable_sending = True
         self.gossipS = False
+        self.falsePositive = 0
+        self.machineCheck = 0
     def checkFalsePositive(self):
         all_member = [f"{ip}:{port}" for ip, port in [(IP, DEFAULT_PORT_NUM) for IP in HOST_NAME_LIST]]
         for member in all_member:
