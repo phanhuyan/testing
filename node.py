@@ -48,7 +48,7 @@ class Server:
             for ip, port in [(IP, DEFAULT_PORT_NUM) for IP in [self.ip, Introducor]]
         }
         self.failMemberList = {}
-        self.failure_time_threshold = 5
+        self.failure_time_threshold = 4
         self.cleanup_time_threshold = 10
         self.suspect_time_threshold = 5
         self.n_send = 2
@@ -294,7 +294,7 @@ class Server:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--protocol-period', type=int, help='Protocol period T in seconds', default=1)
+    parser.add_argument('-t', '--protocol-period', type=float, help='Protocol period T in seconds', default=0.25)
     parser.add_argument('-d', '--drop-rate', type=float,
                         help='The message drop rate',
                         default=0)
