@@ -20,7 +20,7 @@ HOST_NAME_LIST = [
     'fa23-cs425-8010.cs.illinois.edu',
 ]
 Introducor = 'fa23-cs425-8002.cs.illinois.edu'
-DEFAULT_PORT_NUM = 12346
+DEFAULT_PORT_NUM = 12348
 
 logging.basicConfig(level=logging.DEBUG,
                     filename='output.log',
@@ -66,11 +66,9 @@ class Server:
             if member not in self.MembershipList:
                 self.falsePositive += 1
         self.machineCheck += 10
-        log_message = f"False Positive: {self.falsePositive} Machine check: {self.machineCheck}"
+        log_message = f"False Positive: {self.falsePositive} Machine check: {self.machineCheck}\n"
         with open('output.log', 'a') as log_file:
             log_file.write(log_message)
-
-
 
     
     def printID(self):
