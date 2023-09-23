@@ -66,7 +66,10 @@ class Server:
             if member not in self.MembershipList:
                 self.falsePositive += 1
         self.machineCheck += 10
-        print("False Positive: ", self.falsePositive, "Machine check:", self.machineCheck)
+        log_message = f"False Positive: {self.falsePositive} Machine check: {self.machineCheck}"
+        with open('output.log', 'a') as log_file:
+            log_file.write(log_message)
+
 
 
     
@@ -106,7 +109,7 @@ class Server:
                 self.MembershipList[member_id]["time"] = now
                 logger.info("[SUS]    - {}".format(member_id))
                 log_message = f"ID: {member_id}, Status: {self.MembershipList[member_id]['status']}, Time: {self.MembershipList[member_id]['time']}\n"
-                print(log_message)
+
             fail_members_detected = [member_id for member_id, member_info in self.MembershipList.items() if member_info['time'] < suspect_threshold_time and member_id not in self.failMemberList and member_info['status'] == "Suspect"]
             for member_id in fail_members_detected:
                 self.failMemberList[member_id] = now
@@ -153,8 +156,9 @@ class Server:
             log_message += f" {str(self.failMemberList)}\n"
             for member_id, member_info in self.MembershipList.items():
                 log_message += f"ID: {member_info['id']}, Heartbeat: {member_info['heartbeat']}, Status: {member_info['status']}, Time: {member_info['time']}\n"
-            print(log_message)
-            print("GOSSIP+S: {}".format(self.gossipS))
+            with open('output.log', 'a') as log_file:
+                log_file.write(log_message)
+
 
     def chooseMemberToSend(self):
         with self.rlock:
