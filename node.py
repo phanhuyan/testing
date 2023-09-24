@@ -20,7 +20,7 @@ HOST_NAME_LIST = [
     'fa23-cs425-8010.cs.illinois.edu',
 ]
 Introducor = 'fa23-cs425-8002.cs.illinois.edu'
-DEFAULT_PORT_NUM = 12348
+DEFAULT_PORT_NUM = 12353
 
 logging.basicConfig(level=logging.DEBUG,
                     filename='output.log',
@@ -42,6 +42,7 @@ class Server:
                 "id": f"{ip}:{port}",
                 "addr": (ip, port),
                 "heartbeat": 0,
+                "incarnation":0,
                 "status": "Alive",
                 "time": time.time(), 
             }
@@ -49,12 +50,13 @@ class Server:
         }
         self.failMemberList = {}
         self.failure_time_threshold = 4
-        self.cleanup_time_threshold = 10
+        self.cleanup_time_threshold = 4
         self.suspect_time_threshold = 5
         self.n_send = 2
         self.protocol_period = args.protocol_period
         self.status = "Alive"
         self.drop_rate = args.drop_rate
+        self.incarnation = 0
         self.rlock = threading.RLock()
         self.enable_sending = True
         self.gossipS = False
@@ -79,19 +81,29 @@ class Server:
         with self.rlock:
             # only update member with increase heartbeat
             for member_id, member_info in membershipList.items():
-                # Check if the member is already in the MembershipList
+                member_info.setdefault("status", "Alive")
+                member_info.setdefault("incarnation", 0)
+                if member_id == self.id:
+                    if member_info["status"] == "Suspect":
+                         if self.incarnation < member_info["incarnation"]:
+                            self.incarnation = member_info["incarnation"] + 1
                 if member_id in self.failMemberList:
                     continue
+                # Check if the member is already in the MembershipList
                 if member_id in self.MembershipList:
                     current_heartbeat = self.MembershipList[member_id]["heartbeat"]
+                    if member_info["incarnation"] > self.MembershipList[member_id]["incarnation"]:
+                        self.MembershipList[member_id] = member_info
+                        self.MembershipList[member_id]["time"] = time.time()
                     # Update only if the received heartbeat is greater
-                    if member_info["heartbeat"] > current_heartbeat:
+                    elif member_info["heartbeat"] > current_heartbeat:
                         self.MembershipList[member_id] = member_info
                         self.MembershipList[member_id]["time"] = time.time()
                 else:
                     # If the member is not in the MembershipList, add it
                     self.MembershipList[member_id] = member_info
                     self.MembershipList[member_id]["time"] = time.time()
+
                     logger.info("[JOIN]   - {}".format(member_id))
 
     def detectSuspectAndFailMember(self):
@@ -104,6 +116,7 @@ class Server:
             suspect_members_detected = [member_id for member_id, member_info in self.MembershipList.items() if member_info['time'] < failure_threshold_time and member_info["status"] != "Suspect"]
             for member_id in suspect_members_detected:
                 self.MembershipList[member_id]["status"] = "Suspect"
+                self.MembershipList[member_id]["incarnation"] += 1
                 self.MembershipList[member_id]["time"] = now
                 logger.info("[SUS]    - {}".format(member_id))
                 log_message = f"ID: {member_id}, Status: {self.MembershipList[member_id]['status']}, Time: {self.MembershipList[member_id]['time']}\n"
@@ -137,15 +150,26 @@ class Server:
 
     def json(self):
         with self.rlock:
-            return {
-                m['id']:{
-                    'id': m['id'],
-                    'addr': m['addr'],
-                    'heartbeat': m['heartbeat'],
-                    'status': m['status']
+            if self.gossipS:
+                return {
+                    m['id']:{
+                        'id': m['id'],
+                        'addr': m['addr'],
+                        'heartbeat': m['heartbeat'] ,
+                        'status': m['status'],
+                        'incarnation': m['incarnation']
+                    }
+                    for m in self.MembershipList.values()
                 }
-                for m in self.MembershipList.values()
-            }
+            else:
+                return {
+                    m['id']:{
+                        'id': m['id'],
+                        'addr': m['addr'],
+                        'heartbeat': m['heartbeat'] ,
+                    }
+                    for m in self.MembershipList.values()
+                }
 
     def printMembershipList(self):
         with self.rlock:
@@ -153,7 +177,7 @@ class Server:
             log_message = f"{timestamp} ==============================================================\n"
             log_message += f" {str(self.failMemberList)}\n"
             for member_id, member_info in self.MembershipList.items():
-                log_message += f"ID: {member_info['id']}, Heartbeat: {member_info['heartbeat']}, Status: {member_info['status']}, Time: {member_info['time']}\n"
+                log_message += f"ID: {member_info['id']}, Heartbeat: {member_info['heartbeat']}, Status: {member_info['status']}, Incarnation:{member_info['incarnation']}, Time: {member_info['time']}\n"
             with open('output.log', 'a') as log_file:
                 log_file.write(log_message)
 
@@ -196,12 +220,13 @@ class Server:
                 self.enable_sending = True
                 print("Starting to send messages.")
                 self.MembershipList = {
-                f"{ip}:{port}:{self.timejoin}": {
-                "id": f"{ip}:{port}:{self.timejoin}",
+                f"{ip}:{port}": {
+                "id": f"{ip}:{port}",
                 "addr": (ip, port),
                 # "timejoin": self.timejoin,  # Initialize with self.timejoin
                 "heartbeat": 0,
                 "status": "Alive",
+                "incarnation": 0,
                 "time": time.time(),  # Initialize with self.timejoin
                 }
                 for ip, port in [(IP, DEFAULT_PORT_NUM) for IP in [self.ip, Introducor]]
@@ -248,6 +273,7 @@ class Server:
             self.MembershipList[self.id]["status"] = "Alive"
             self.MembershipList[self.id]["heartbeat"] = self.heartbeat
             self.MembershipList[self.id]["time"] = time.time()
+            self.MembershipList[self.id]["incarnation"] = self.incarnation
             if self.gossipS:
                 self.detectSuspectAndFailMember()
             else:
@@ -279,9 +305,9 @@ class Server:
         sender_thread.start()
 
         # Start a to update enable sending
-        # user_thread = threading.Thread(target=self.user_input)
-        # user_thread.daemon = True
-        # user_thread.start()
+        user_thread = threading.Thread(target=self.user_input)
+        user_thread.daemon = True
+        user_thread.start()
 
         # You can add any additional logic or tasks here that the server should perform.
 
@@ -289,12 +315,12 @@ class Server:
         # heartbeat_thread.join()
         receiver_thread.join()
         sender_thread.join()
-        # user_thread.join()
+        user_thread.join()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--protocol-period', type=float, help='Protocol period T in seconds', default=0.25)
+    parser.add_argument('-t', '--protocol-period', type=float, help='Protocol period T in seconds', default=1)
     parser.add_argument('-d', '--drop-rate', type=float,
                         help='The message drop rate',
                         default=0)
